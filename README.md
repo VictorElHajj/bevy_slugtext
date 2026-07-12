@@ -1,12 +1,21 @@
 ![example](assets/example.png)
 
+## Version Compatibility
+
+`bevy_slugtext` versions are tied to the supported Bevy release:
+
+| `bevy_slugtext` | `bevy` |
+| --- | --- |
+| `0.1.1` | `0.19` |
+| `0.1.0` | `0.18` |
+
 ## Integrating to your Bevy App
 
 Add to Cargo.toml:
 
 ```
 [dependencies]
-bevy_slugtext = "0.1.0"
+bevy_slugtext = "0.1.1"
 ```
 
 Include the library:
@@ -22,6 +31,7 @@ App::new()
     ...
     .add_plugins(SlugTextPlugin)
     ...;
+```
 
 Then, spawn a textmesh bundle:
 

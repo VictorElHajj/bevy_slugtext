@@ -44,4 +44,3 @@ fn update_text(
         }
     }
 }
-

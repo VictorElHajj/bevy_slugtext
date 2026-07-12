@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::{component::{TextMaterial, TextMesh, TextMeshComputed}, slug};
+use crate::{
+    component::{TextMaterial, TextMesh, TextMeshComputed},
+    slug,
+};
 
 pub fn compute_mesh_and_material(
     mut commands: Commands,
@@ -18,7 +21,7 @@ pub fn compute_mesh_and_material(
             continue;
         };
 
-        let Ok(face) = ttf_parser::Face::parse(&font.data, 0) else {
+        let Ok(face) = ttf_parser::Face::parse(font.data.data(), 0) else {
             continue;
         };
 
