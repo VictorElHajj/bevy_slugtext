@@ -26,7 +26,24 @@ pub fn compute_mesh_and_material(
         };
 
         let prepare_text = slug::prepare_text(&face, &text_mesh.text, text_mesh.size);
-        mesh3d.0 = meshes.add(prepare_text.mesh());
+
+        let mesh = if text_mesh.billboard {
+            // Realign the baseline-left layout to the requested anchor (pixel units).
+            let units_per_em = face.units_per_em() as f32;
+            let scale = if units_per_em > 0.0 {
+                text_mesh.size / units_per_em
+            } else {
+                1.0
+            };
+            let width = prepare_text.total_advance * scale;
+            let ascender = face.ascender() as f32 * scale;
+            let descender = face.descender() as f32 * scale;
+            let shift = text_mesh.anchor.shift(width, ascender, descender);
+            prepare_text.mesh_offset(shift.x, shift.y)
+        } else {
+            prepare_text.mesh()
+        };
+        mesh3d.0 = meshes.add(mesh);
 
         commands
             .entity(entity)

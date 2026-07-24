@@ -22,6 +22,7 @@ impl Plugin for SlugTextPlugin {
 
 pub mod prelude {
     pub use super::SlugTextPlugin;
+    pub use super::component::TextAnchor;
     pub use super::component::TextMaterial;
     pub use super::component::TextMesh;
 }

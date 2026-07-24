@@ -97,6 +97,12 @@ pub struct PreparedText {
 
 impl PreparedText {
     pub fn mesh(&self) -> Mesh {
+        self.mesh_offset(0.0, 0.0)
+    }
+
+    /// Like [`Self::mesh`], but translates every glyph vertex by `(dx, dy)` pixels. Used to realign
+    /// the baseline-left layout to a chosen anchor for billboard text (`+y` is up).
+    pub fn mesh_offset(&self, dx: f32, dy: f32) -> Mesh {
         let mut position = Vec::new();
         let mut normal = Vec::new();
 
@@ -105,10 +111,12 @@ impl PreparedText {
         let mut jac = Vec::new();
         let mut bnd = Vec::new();
         for chunk in self.vertices.chunks_exact(16) {
-            position.push([chunk[0], chunk[1], 0.0]);
+            let (px, py) = (chunk[0] + dx, chunk[1] + dy);
+            position.push([px, py, 0.0]);
             normal.push([chunk[2], chunk[3], 0.0]);
 
-            pos.push([chunk[0], chunk[1], chunk[2], chunk[3]]);
+            // pos.zw is the corner normal used for dilation, not a position — leave it unshifted.
+            pos.push([px, py, chunk[2], chunk[3]]);
             tex.push([chunk[4], chunk[5], chunk[6], chunk[7]]);
             jac.push([chunk[8], chunk[9], chunk[10], chunk[11]]);
             bnd.push([chunk[12], chunk[13], chunk[14], chunk[15]]);

@@ -17,6 +17,47 @@ pub struct TextMesh {
     /// translation is used as the anchor (rotation/scale ignored), and the label is
     /// depth-tested at that anchor so it can be occluded by nearer geometry.
     pub billboard: bool,
+    /// Billboard-only. Which point of the text box is aligned to the entity's anchor. Ignored
+    /// for world-space text (which is always laid out baseline-left from the origin).
+    pub anchor: TextAnchor,
+}
+
+/// Which point of a text box is placed at the anchor. Vertical positions are relative to the font's
+/// ascender/descender; `Baseline` is the text baseline.
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
+pub enum TextAnchor {
+    TopLeft,
+    TopCenter,
+    TopRight,
+    CenterLeft,
+    Center,
+    CenterRight,
+    #[default]
+    BaselineLeft,
+    BaselineCenter,
+    BottomLeft,
+    BottomCenter,
+    BottomRight,
+}
+
+impl TextAnchor {
+    /// Pixel shift added to the baseline-left mesh so `self` lands on the origin, given the text's
+    /// pixel `width`, `ascender`, and `descender` (`descender` is negative, `+y` is up).
+    pub fn shift(self, width: f32, ascender: f32, descender: f32) -> Vec2 {
+        use TextAnchor::*;
+        let x = match self {
+            TopLeft | CenterLeft | BaselineLeft | BottomLeft => 0.0,
+            TopCenter | Center | BaselineCenter | BottomCenter => -width * 0.5,
+            TopRight | CenterRight | BottomRight => -width,
+        };
+        let y = match self {
+            TopLeft | TopCenter | TopRight => -ascender,
+            CenterLeft | Center | CenterRight => -(ascender + descender) * 0.5,
+            BaselineLeft | BaselineCenter => 0.0,
+            BottomLeft | BottomCenter | BottomRight => -descender,
+        };
+        Vec2::new(x, y)
+    }
 }
 
 impl Default for TextMesh {
@@ -28,6 +69,7 @@ impl Default for TextMesh {
             bg_color: Color::BLACK.with_alpha(0.0),
             size: 1.0,
             billboard: false,
+            anchor: TextAnchor::default(),
         }
     }
 }
