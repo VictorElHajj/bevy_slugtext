@@ -98,7 +98,10 @@ pub struct TextMaterial {
 
 impl Material for TextMaterial {
     fn alpha_mode(&self) -> AlphaMode {
-        AlphaMode::Blend
+        // The pixel shader returns `mix(bg_color, color, coverage)`, i.e. colour already multiplied
+        // by coverage (premultiplied alpha). Straight `Blend` would multiply by alpha a second time
+        // and darken sub-pixel (small / thin) text; `Premultiplied` composites it correctly.
+        AlphaMode::Premultiplied
     }
 
     fn fragment_shader() -> ShaderRef {
