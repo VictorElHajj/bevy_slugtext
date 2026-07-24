@@ -47,6 +47,8 @@ fn SlugDilate(pos: vec4<f32>, tex: vec4<f32>, jac: vec4<f32>, m0: vec4<f32>, m1:
     return SlugDilateResult(texcoord, vpos);
 }
 
+@group(#{MATERIAL_BIND_GROUP}) @binding(104) var<uniform> billboard: u32;
+
 struct VertexInput {
     @builtin(instance_index) instance_index: u32,
     @location(0) position: vec3<f32>,
@@ -69,24 +71,52 @@ fn main(attrib: VertexInput) -> VertexStruct {
 
     let slug_viewport = view.viewport.zw;
     let model_matrix = mesh_functions::get_world_from_local(attrib.instance_index);
-    
-    let sm = transpose(view.clip_from_world * model_matrix);
 
-    let m0 = sm[0];
-    let m1 = sm[1];
-    let m2 = sm[2];
-    let m3 = sm[3];
-    
-    let dilateResult = SlugDilate(attrib.pos, attrib.tex, attrib.jac, m0, m1, m3, slug_viewport);
-    vresult.texcoord = dilateResult.texcoord;
-    let p = dilateResult.vpos;
+    if (billboard == 1u) {
+        // Camera-facing, constant-screen-size billboard.
+        // Only the model origin (translation) is projected; the glyph offset (already in
+        // pixel units) is added in screen space and scaled by clip_origin.w so it stays a
+        // constant pixel size after the perspective divide.
+        let world_origin = model_matrix[3];
+        let clip_origin = view.clip_from_world * world_origin;
 
-    vresult.position = vec4<f32>(
-        p.x * m0.x + p.y * m0.y + m0.w,
-        p.x * m1.x + p.y * m1.y + m1.w,
-        p.x * m2.x + p.y * m2.y + m2.w,
-        p.x * m3.x + p.y * m3.y + m3.w
-    );
+        // Glyph->screen is a uniform scale here, so Slug's screen-space dilation collapses
+        // to a constant ~half-pixel offset along the corner normal.
+        let n = normalize(attrib.pos.zw);
+        let d = n * 0.5;
+        let vpos = attrib.pos.xy + d;
+        vresult.texcoord = vec2<f32>(
+            attrib.tex.x + dot(d, attrib.jac.xy),
+            attrib.tex.y + dot(d, attrib.jac.zw)
+        );
+
+        // viewport.zw = (width, height); use each axis independently to avoid aspect stretch.
+        let ndc = vpos * 2.0 / slug_viewport;
+        vresult.position = vec4<f32>(
+            clip_origin.x + ndc.x * clip_origin.w,
+            clip_origin.y + ndc.y * clip_origin.w,
+            clip_origin.z,
+            clip_origin.w
+        );
+    } else {
+        let sm = transpose(view.clip_from_world * model_matrix);
+
+        let m0 = sm[0];
+        let m1 = sm[1];
+        let m2 = sm[2];
+        let m3 = sm[3];
+
+        let dilateResult = SlugDilate(attrib.pos, attrib.tex, attrib.jac, m0, m1, m3, slug_viewport);
+        vresult.texcoord = dilateResult.texcoord;
+        let p = dilateResult.vpos;
+
+        vresult.position = vec4<f32>(
+            p.x * m0.x + p.y * m0.y + m0.w,
+            p.x * m1.x + p.y * m1.y + m1.w,
+            p.x * m2.x + p.y * m2.y + m2.w,
+            p.x * m3.x + p.y * m3.y + m3.w
+        );
+    }
 
     let unpackResult = SlugUnpack(attrib.tex, attrib.bnd);
     vresult.banding = unpackResult.vbnd;

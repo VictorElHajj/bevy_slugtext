@@ -37,6 +37,7 @@ pub fn compute_mesh_and_material(
                 band_texture: images.add(prepare_text.band()),
                 color: text_mesh.color.to_linear(),
                 bg_color: text_mesh.bg_color.to_linear(),
+                billboard: text_mesh.billboard as u32,
             })));
     }
 }

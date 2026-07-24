@@ -12,6 +12,11 @@ pub struct TextMesh {
     pub color: Color,
     pub bg_color: Color,
     pub size: f32,
+    /// When `true`, the text renders as a camera-facing billboard with a constant
+    /// on-screen size: `size` is interpreted as the em-height in pixels, the entity's
+    /// translation is used as the anchor (rotation/scale ignored), and the label is
+    /// depth-tested at that anchor so it can be occluded by nearer geometry.
+    pub billboard: bool,
 }
 
 impl Default for TextMesh {
@@ -22,6 +27,7 @@ impl Default for TextMesh {
             color: Color::BLACK,
             bg_color: Color::BLACK.with_alpha(0.0),
             size: 1.0,
+            billboard: false,
         }
     }
 }
@@ -42,6 +48,10 @@ pub struct TextMaterial {
 
     #[uniform(103)]
     pub bg_color: LinearRgba,
+
+    /// 0 = world-space text, 1 = camera-facing constant-size billboard.
+    #[uniform(104)]
+    pub billboard: u32,
 }
 
 impl Material for TextMaterial {
