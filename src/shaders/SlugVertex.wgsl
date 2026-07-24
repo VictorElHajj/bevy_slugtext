@@ -83,7 +83,7 @@ fn main(attrib: VertexInput) -> VertexStruct {
         // Glyph->screen is a uniform scale here, so Slug's screen-space dilation collapses
         // to a constant ~half-pixel offset along the corner normal.
         let n = normalize(attrib.pos.zw);
-        let d = n * 0.5;
+        let d = n * 0.35;
         let vpos = attrib.pos.xy + d;
         vresult.texcoord = vec2<f32>(
             attrib.tex.x + dot(d, attrib.jac.xy),
