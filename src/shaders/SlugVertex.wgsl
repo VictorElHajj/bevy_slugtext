@@ -78,12 +78,22 @@ fn main(attrib: VertexInput) -> VertexStruct {
         // pixel units) is added in screen space and scaled by clip_origin.w so it stays a
         // constant pixel size after the perspective divide.
         let world_origin = model_matrix[3];
-        let clip_origin = view.clip_from_world * world_origin;
+        var clip_origin = view.clip_from_world * world_origin;
+
+        // Snap the projected origin to a whole pixel. Glyph edges otherwise land at an
+        // arbitrary subpixel phase, so a 1px stem splits its coverage across two columns and
+        // reads as blur. Guarded on w: vertices behind the camera are clipped anyway, and
+        // dividing by w <= 0 would feed garbage to round().
+        if (clip_origin.w > 0.0) {
+            let origin_px = (clip_origin.xy / clip_origin.w * 0.5 + 0.5) * slug_viewport;
+            let snapped_ndc = round(origin_px) / slug_viewport * 2.0 - 1.0;
+            clip_origin = vec4<f32>(snapped_ndc * clip_origin.w, clip_origin.z, clip_origin.w);
+        }
 
         // Glyph->screen is a uniform scale here, so Slug's screen-space dilation collapses
-        // to a constant ~half-pixel offset along the corner normal.
-        let n = normalize(attrib.pos.zw);
-        let d = n * 0.5;
+        // to a constant half-pixel offset along the corner vector. `pos.zw` is used raw (it is
+        // +/-1 per axis) to match SlugDilate; normalizing first would under-dilate by sqrt(2).
+        let d = attrib.pos.zw * 0.5;
         let vpos = attrib.pos.xy + d;
         vresult.texcoord = vec2<f32>(
             attrib.tex.x + dot(d, attrib.jac.xy),
