@@ -14,9 +14,13 @@ pub struct TextMesh {
     pub size: f32,
     /// When `true`, the text renders as a camera-facing billboard with a constant
     /// on-screen size: `size` is interpreted as the em-height in pixels, the entity's
-    /// translation is used as the anchor (rotation/scale ignored), and the label is
-    /// depth-tested at that anchor so it can be occluded by nearer geometry.
+    /// translation is used as the anchor (rotation/scale ignored).
     pub billboard: bool,
+    /// When `true` (the default) the text is depth-tested like ordinary geometry; when `false`
+    /// it draws over everything. Turn it off for markers that must always be readable — note
+    /// that a depth-tested billboard sits at one depth, so an occluder slices it mid-word
+    /// rather than hiding it. To hide one cleanly, test its anchor and toggle `Visibility`.
+    pub depth_test: bool,
     /// Billboard-only. Which point of the text box is aligned to the entity's anchor. Ignored
     /// for world-space text (which is always laid out baseline-left from the origin).
     pub anchor: TextAnchor,
@@ -69,6 +73,7 @@ impl Default for TextMesh {
             bg_color: Color::BLACK.with_alpha(0.0),
             size: 1.0,
             billboard: false,
+            depth_test: true,
             anchor: TextAnchor::default(),
         }
     }
@@ -78,6 +83,7 @@ impl Default for TextMesh {
 pub struct TextMeshComputed;
 
 #[derive(Asset, AsBindGroup, Reflect, Debug, Clone, Default)]
+#[bind_group_data(TextMaterialKey)]
 pub struct TextMaterial {
     #[texture(100, dimension = "2d", sample_type = "float")]
     pub curve_texture: Handle<Image>,
@@ -94,6 +100,25 @@ pub struct TextMaterial {
     /// 0 = world-space text, 1 = camera-facing constant-size billboard.
     #[uniform(104)]
     pub billboard: u32,
+
+    /// See [`TextMesh::depth_test`]. Not a uniform -- it selects a pipeline, not a shader path.
+    pub depth_test: bool,
+}
+
+/// Pipeline key: depth comparison varies per label, so it must be known at specialization time
+/// rather than only as a shader uniform.
+#[repr(C)]
+#[derive(Copy, Clone, Hash, Eq, PartialEq)]
+pub struct TextMaterialKey {
+    depth_test: bool,
+}
+
+impl From<&TextMaterial> for TextMaterialKey {
+    fn from(material: &TextMaterial) -> Self {
+        Self {
+            depth_test: material.depth_test,
+        }
+    }
 }
 
 impl Material for TextMaterial {
@@ -116,7 +141,7 @@ impl Material for TextMaterial {
         _pipeline: &bevy::pbr::MaterialPipeline,
         descriptor: &mut bevy::render::render_resource::RenderPipelineDescriptor,
         layout: &bevy::mesh::MeshVertexBufferLayoutRef,
-        _key: bevy::pbr::MaterialPipelineKey<Self>,
+        key: bevy::pbr::MaterialPipelineKey<Self>,
     ) -> Result<(), bevy::render::render_resource::SpecializedMeshPipelineError> {
         let vertex_layout = layout.0.get_layout(&[
             Mesh::ATTRIBUTE_POSITION.at_shader_location(0),
@@ -129,6 +154,15 @@ impl Material for TextMaterial {
 
         descriptor.vertex.buffers = vec![vertex_layout];
         descriptor.primitive.cull_mode = None;
+
+        // Read side only: `AlphaMode::Premultiplied` already renders in the transparent phase
+        // with `depth_write_enabled = false`.
+        if !key.bind_group_data.depth_test {
+            if let Some(depth_stencil) = descriptor.depth_stencil.as_mut() {
+                depth_stencil.depth_compare =
+                    Some(bevy::render::render_resource::CompareFunction::Always);
+            }
+        }
 
         Ok(())
     }

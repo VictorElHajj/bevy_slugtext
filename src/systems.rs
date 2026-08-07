@@ -55,6 +55,7 @@ pub fn compute_mesh_and_material(
                 color: text_mesh.color.to_linear(),
                 bg_color: text_mesh.bg_color.to_linear(),
                 billboard: text_mesh.billboard as u32,
+                depth_test: text_mesh.depth_test,
             })));
     }
 }
